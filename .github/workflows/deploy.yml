@@ -1,0 +1,38 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+            -u "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ghcr.io/nelisiwe04/tender-scrapping:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/nelisiwe04/tender-scrapping:latest
+
+      - name: Deploy
+        run: |
+          docker pull ghcr.io/nelisiwe04/tender-scrapping:latest
+          docker compose up -d
