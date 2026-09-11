@@ -1,5 +1,5 @@
-FROM python:3.10-slim
-
+FROM postgres:16
+EXPOSE 5432
 WORKDIR /app
 
 COPY ./app
