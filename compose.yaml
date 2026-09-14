@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: tender_scrapping_db
 
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -30,5 +30,37 @@ services:
     depends_on:
       - postgres
 
+    configs:
+      - source: pgadmin-pgpass
+        target: /config/pgpass
+        uid: "5050"
+        gid: "5050"
+        mode: 0400
+      - source: pgadmin-servers
+        target: /pgadmin4/servers.json
+        mode: 0444
+
 volumes:
   postgres_data:
+
+configs:
+  pgadmin-servers:
+    content: |
+      {
+        "Servers": {
+          "1": {
+            "Name": "Tender Scrapping Server",
+            "Group": "Servers",
+            "Host": "postgres",
+            "Port": 5432,
+            "MaintenanceDB": "postgres",
+            "Username": "admin@tender.com",
+            "PassFile": "/config/pgpass"
+          }
+        }
+      }
+
+      configs:
+  pgadmin-pgpass:
+    content: |
+      admin@tender.com:5432:*:admin@tender.com:secret
