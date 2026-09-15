@@ -36,6 +36,7 @@ services:
         uid: "5050"
         gid: "5050"
         mode: 0400
+
       - source: pgadmin-servers
         target: /pgadmin4/servers.json
         mode: 0444
@@ -53,14 +54,13 @@ configs:
             "Group": "Servers",
             "Host": "postgres",
             "Port": 5432,
-            "MaintenanceDB": "postgres",
-            "Username": "admin@tender.com",
+            "MaintenanceDB": "tender_scrapping_db",
+            "Username": "tender_scrapping_agent",
             "PassFile": "/config/pgpass"
           }
         }
       }
 
-      configs:
   pgadmin-pgpass:
     content: |
-      admin@tender.com:5432:*:admin@tender.com:secret
+      postgres:5432:tender_scrapping_db:tender_scrapping_agent:tender@scrapping
