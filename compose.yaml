@@ -63,8 +63,4 @@ configs:
 
   pgadmin-pgpass:
     content: |
-<<<<<<< Updated upstream
       postgres:5432:tender_scrapping_db:tender_scrapping_agent:tender@scrapping
-=======
-
->>>>>>> Stashed changes
