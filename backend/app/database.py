@@ -1,15 +1,13 @@
 import asyncpg                       
-import os
 from datetime import datetime
 from typing import Optional
 
 from .models import Tender
 
-DB_DSN = os.getenv(
-    "DATABASE_URL",
-    "postgresql://tender_scrapping_agent:tender%40scrapping@129.151.181.87:5433/tender_scrapping_db",
-)
+from .config import get_settings
 
+settings = get_settings()
+DB_DSN = settings.database_url
 
 def _parse_ts(value):
     """Best-effort parse of a date/time string from the portal."""

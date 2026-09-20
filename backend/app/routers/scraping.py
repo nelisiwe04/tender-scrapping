@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from ..scraper import scrape_tenders, ScrapeError
 from ..config import get_settings
+from ..auth import require_api_key
 
 settings = get_settings()
 router = APIRouter(tags=["scraping"])
 
 
-@router.post("/scrape")
+@router.post("/scrape", dependencies=[Depends(require_api_key)])
 async def scrape_only(
     status: str = Query("current"),
     max_pages: int = Query(1, ge=1, le=settings.max_pages_hard_cap),
