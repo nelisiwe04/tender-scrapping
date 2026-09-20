@@ -1,14 +1,12 @@
-import asyncpg                       
-import os
+import asyncpg
 from datetime import datetime
 from typing import Optional
 
 from .models import Tender
+from .config import get_settings
 
-DB_DSN = os.getenv(
-    "DATABASE_URL",
-    "postgresql://tender_scrapping_agent:tender%40scrapping@129.151.181.87:5433/tender_scrapping_db",
-)
+settings = get_settings()
+DB_DSN = settings.database_url
 
 
 def _parse_ts(value):
@@ -30,14 +28,12 @@ def _parse_ts(value):
 
 
 class TenderDB:
-    def __init__(self, pool: asyncpg.Pool):          
+    def __init__(self, pool: asyncpg.Pool):
         self.pool = pool
 
     @classmethod
     async def connect(cls) -> "TenderDB":
-        pool = await asyncpg.create_pool(            
-            DB_DSN, min_size=1, max_size=5
-        )
+        pool = await asyncpg.create_pool(DB_DSN, min_size=1, max_size=5)
         return cls(pool)
 
     async def close(self):
@@ -69,12 +65,11 @@ class TenderDB:
             return row["p_success"]
 
     # --------------------------------------------------------------
-    # Tender save
+    # Tender save — returns "new" | "updated" | "skipped"
     # --------------------------------------------------------------
-    async def save_tender(self, tender: Tender, source: str) -> bool:
-        """Returns True if a NEW tender was inserted, False if updated."""
+    async def save_tender(self, tender: Tender, source: str) -> str:
         if not tender.tender_number:
-            return False
+            return "skipped"
 
         async with self.pool.acquire() as conn:
             exists = await conn.fetchval(
@@ -84,7 +79,6 @@ class TenderDB:
             is_new = exists is None
 
             async with conn.transaction():
-                # 1. Upsert main tender + contact + briefing
                 row = await conn.fetchrow(
                     """
                     CALL upsert_full_tender(
@@ -96,7 +90,7 @@ class TenderDB:
                     )
                     """,
                     tender.tender_number,
-                    (tender.description or "")[:200],   # title fallback
+                    (tender.description or "")[:200],
                     tender.description,
                     tender.organ_of_state or "Unknown",
                     tender.category or "Uncategorised",
@@ -119,7 +113,6 @@ class TenderDB:
                 )
                 tender_id = row["p_tender_id"]
 
-                # 2. Documents
                 for doc in tender.documents:
                     try:
                         await conn.fetchrow(
@@ -132,9 +125,10 @@ class TenderDB:
                     except Exception as e:
                         print(f"[DB WARN] Doc insert failed for {doc['url']}: {e}")
 
-                return is_new
+            return "new" if is_new else "updated"
+
     # --------------------------------------------------------------
-    # Read methods (backing the new endpoints)
+    # Read methods
     # --------------------------------------------------------------
     async def list_tenders(
         self,
