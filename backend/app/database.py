@@ -133,3 +133,100 @@ class TenderDB:
                         print(f"[DB WARN] Doc insert failed for {doc['url']}: {e}")
 
                 return is_new
+    # --------------------------------------------------------------
+    # Read methods (backing the new endpoints)
+    # --------------------------------------------------------------
+    async def list_tenders(
+        self,
+        status: str | None = None,
+        province: str | None = None,
+        category: str | None = None,
+        organisation: str | None = None,
+        closing_before=None,
+        closing_after=None,
+        keyword: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT * FROM list_tenders(
+                    $1::varchar, $2::varchar, $3::varchar, $4::varchar,
+                    $5::timestamp, $6::timestamp, $7::varchar,
+                    $8::integer, $9::integer
+                )
+                """,
+                status, province, category, organisation,
+                _parse_ts(closing_before), _parse_ts(closing_after),
+                keyword, limit, offset,
+            )
+            return [dict(r) for r in rows]
+
+    async def count_tenders(
+        self,
+        status: str | None = None,
+        province: str | None = None,
+        category: str | None = None,
+        organisation: str | None = None,
+        closing_before=None,
+        closing_after=None,
+        keyword: str | None = None,
+    ) -> int:
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(
+                """
+                SELECT count_tenders_filtered(
+                    $1::varchar, $2::varchar, $3::varchar, $4::varchar,
+                    $5::timestamp, $6::timestamp, $7::varchar
+                )
+                """,
+                status, province, category, organisation,
+                _parse_ts(closing_before), _parse_ts(closing_after),
+                keyword,
+            )
+
+    async def get_tender_detail(self, tender_number: str):
+        async with self.pool.acquire() as conn:
+            raw = await conn.fetchval(
+                "SELECT get_tender_detail($1::varchar)", tender_number
+            )
+            if raw is None:
+                return None
+            import json
+            return json.loads(raw) if isinstance(raw, str) else raw
+
+    async def get_dashboard_stats(self):
+        async with self.pool.acquire() as conn:
+            raw = await conn.fetchval("SELECT get_dashboard_stats()")
+            if raw is None:
+                return {}
+            import json
+            return json.loads(raw) if isinstance(raw, str) else raw
+
+    async def list_scraping_logs(self, limit: int = 50, offset: int = 0):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, source, started_at, completed_at,
+                       tenders_found, tenders_added, status, error_message
+                FROM scraping_logs
+                ORDER BY id DESC
+                LIMIT $1 OFFSET $2
+                """,
+                limit, offset,
+            )
+            return [dict(r) for r in rows]
+
+    async def get_scraping_log(self, log_id: int):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, source, started_at, completed_at,
+                       tenders_found, tenders_added, status, error_message
+                FROM scraping_logs
+                WHERE id = $1
+                """,
+                log_id,
+            )
+            return dict(row) if row else None
