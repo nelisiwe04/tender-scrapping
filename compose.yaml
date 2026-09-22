@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_USER: tender_scrapping_agent
+      POSTGRES_USER: $POSTGRES_USER
       POSTGRES_PASSWORD: tender@scrapping
       POSTGRES_DB: tender_scrapping_db
 
